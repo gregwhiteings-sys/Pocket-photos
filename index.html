@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>Pocket Photo — Phone to PC</title>
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#080a0d;--card:#11151b;--card2:#171c23;--line:#29313b;--text:#f6f7f9;--muted:#9da6b2;--accent:#62e6a5;--accent2:#39b8ff;--danger:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#18202a 0,#080a0d 42%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh}
+.wrap{width:min(760px,94vw);margin:0 auto;padding:34px 0 60px}.brand{font-weight:800;font-size:30px;letter-spacing:-.04em}.tag{color:var(--muted);margin-top:4px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}.pill{border:1px solid var(--line);background:#10141a;padding:8px 12px;border-radius:999px;font-size:12px;color:var(--muted)}
+.card{background:rgba(17,21,27,.94);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 20px 70px rgba(0,0,0,.35);margin-bottom:18px}.center{text-align:center}.qrbox{background:white;border-radius:18px;padding:16px;width:290px;max-width:78vw;margin:18px auto}.qrbox canvas,.qrbox img{width:100%!important;height:auto!important;display:block}.status{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:14px}.dot{width:9px;height:9px;border-radius:50%;background:#7d8794}.dot.on{background:var(--accent);box-shadow:0 0 14px rgba(98,230,165,.65)}
+.btn{appearance:none;border:0;border-radius:16px;padding:15px 18px;font-size:16px;font-weight:750;cursor:pointer;background:linear-gradient(135deg,var(--accent),#35c98b);color:#06100b;min-height:52px}.btn.secondary{background:var(--card2);border:1px solid var(--line);color:var(--text)}.btn:disabled{opacity:.45;cursor:not-allowed}.buttons{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.hint{color:var(--muted);font-size:13px;line-height:1.5}.hidden{display:none!important}
+#phoneView h1,#pcView h1{font-size:32px;margin:8px 0 6px;letter-spacing:-.03em}.bigicon{font-size:48px}.drop{border:2px dashed #36414e;border-radius:20px;padding:26px;text-align:center;margin:16px 0;background:#0d1116}.drop strong{display:block;font-size:18px;margin-bottom:6px}.drop input{display:none}.choose{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:14px}.files{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:16px}.file{background:#0d1116;border:1px solid var(--line);border-radius:14px;overflow:hidden}.file img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.file div{padding:8px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.progress{height:10px;background:#222a34;border-radius:999px;overflow:hidden;margin:14px 0}.bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .15s}.received{display:flex;align-items:center;gap:12px;padding:12px;background:#0d1116;border:1px solid var(--line);border-radius:14px;margin:8px 0}.received img{width:60px;height:60px;border-radius:10px;object-fit:cover}.received .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.small{font-size:12px;color:var(--muted)}.notice{padding:12px 14px;border-radius:14px;background:#101821;border:1px solid #25384a;color:#b9c8d7;font-size:13px;line-height:1.5;margin-top:14px}.error{color:#ff9a9a;background:#241214;border-color:#4a2226}.footer{text-align:center;color:#67717d;font-size:12px;margin-top:18px}
+@media(max-width:560px){.wrap{padding-top:22px}.card{padding:18px;border-radius:20px}.top{align-items:flex-start}.brand{font-size:26px}#phoneView h1,#pcView h1{font-size:28px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div><div class="brand">Pocket Photo</div><div class="tag">Phone / WhatsApp → Windows PC photo transfer</div></div><div class="pill">No PC app</div></div>
+
+  <section id="pcView" class="hidden">
+    <div class="card center">
+      <div class="bigicon">💻</div>
+      <h1>Ready to receive</h1>
+      <div class="status"><span id="pcDot" class="dot"></span><span id="pcStatus">Connecting…</span></div>
+      <div id="qr" class="qrbox"></div>
+      <div class="hint"><strong>Scan with iPhone or Android</strong><br>Use your phone camera or Google Lens.</div>
+      <div class="buttons" style="margin-top:14px"><button id="copyLink" class="btn secondary">Copy connection link</button></div>
+      <div id="pcNotice" class="notice">Keep this browser tab open while sending. Photos transfer directly between the two browsers when WebRTC can make a peer-to-peer connection.</div>
+    </div>
+    <div class="card">
+      <h2>Received photos <span id="count" class="small">0</span></h2>
+      <div id="received"></div>
+      <div class="buttons"><button id="downloadAll" class="btn" disabled>Download all</button><button id="clear" class="btn secondary" disabled>Clear</button></div>
+    </div>
+  </section>
+
+  <section id="phoneView" class="hidden">
+    <div class="card center">
+      <div class="bigicon">📱</div>
+      <h1>Send photos</h1>
+      <div class="status"><span id="phoneDot" class="dot"></span><span id="phoneStatus">Connecting to PC…</span></div>
+      <div class="drop">
+        <strong>Send photos from your iPhone</strong>
+        <div class="hint">Choose from Photos/Files, or use the WhatsApp clipboard shortcut below.</div>
+        <label class="btn choose">＋ Select photos<input id="picker" type="file" accept="image/*" multiple></label>
+      </div>
+      <div class="drop" style="border-style:solid;border-color:#2f4558;background:#0c141c">
+        <strong>⚡ WhatsApp → Pocket Photo</strong>
+        <div class="hint">In WhatsApp, open the photo and use <b>Copy</b> if your iPhone offers it. Return here and tap <b>Paste photo</b>. Safari will ask for permission to paste when required.</div>
+        <div class="buttons" style="margin-top:14px"><button id="pastePhoto" class="btn secondary">📋 Paste photo</button></div>
+        <div id="pasteStatus" class="small" style="margin-top:10px">No photo pasted yet.</div>
+      </div>
+      <div id="selected" class="files"></div>
+      <div class="buttons"><button id="send" class="btn" disabled>Send photos</button></div>
+      <div id="sendProgress" class="hidden"><div class="progress"><div id="sendBar" class="bar"></div></div><div id="sendText" class="small">Preparing…</div></div>
+      <div id="phoneNotice" class="notice hidden"></div>
+    </div>
+  </section>
+
+  <div id="badView" class="card center hidden"><h1>Open Pocket Photo</h1><p class="hint">Use the QR code shown on the Windows PC to connect your phone.</p></div>
+  <div class="footer">Pocket Photo • Photos only • iPhone + Android • WhatsApp clipboard helper • No Windows app required</div>
+</div>
+<script>
+(function(){
+  const qs=new URLSearchParams(location.search); const target=qs.get('connect');
+  const pcView=document.getElementById('pcView'), phoneView=document.getElementById('phoneView'), badView=document.getElementById('badView');
+  const pcMode=!target;
+  if(pcMode) pcView.classList.remove('hidden'); else phoneView.classList.remove('hidden');
+
+  let peer=null, conn=null, received=[], selected=[];
+  const CHUNK=48*1024;
+  const pageUrl=new URL(location.href);
+  pageUrl.search=''; pageUrl.hash='';
+  const appUrl=pageUrl.href;
+  let connectionUrl='';
+  function setStatus(id,text,on){document.getElementById(id).textContent=text; document.getElementById(id.replace('Status','Dot')).classList.toggle('on',!!on)}
+  function fail(text){ if(pcMode){setStatus('pcStatus',text,false)}else{setStatus('phoneStatus',text,false);const n=document.getElementById('phoneNotice');n.textContent=text;n.classList.remove('hidden');n.classList.add('error')} }
+
+  if(!window.Peer){ fail('PeerJS failed to load. Check the internet connection.'); return; }
+
+  if(pcMode) startPC(); else startPhone();
+
+  function startPC(){
+    peer=new Peer(undefined,{host:'0.peerjs.com',port:443,path:'/',secure:true,debug:0});
+    peer.on('open',id=>{
+      setStatus('pcStatus','Waiting for iPhone…',true);
+      connectionUrl=appUrl+'?connect='+encodeURIComponent(id);
+      const qr=document.getElementById('qr');
+      qr.innerHTML='';
+      new QRCode(qr,{text:connectionUrl,width:320,height:320,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
+      const copy=document.getElementById('copyLink');
+      copy.onclick=async()=>{try{await navigator.clipboard.writeText(connectionUrl);copy.textContent='Link copied ✓';setTimeout(()=>copy.textContent='Copy connection link',1800)}catch(e){prompt('Copy this connection link:',connectionUrl)}};
+      if(location.protocol==='file:'){
+        const n=document.getElementById('pcNotice');
+        n.classList.add('error');
+        n.innerHTML='<strong>One setup step:</strong> this page is being opened as a local file. For a phone to scan and open the QR code, upload Pocket Photo to an HTTPS web address (GitHub Pages, Cloudflare Pages or Netlify). The PC still needs no app installed.';
+        setStatus('pcStatus','Local file — hosting required',false);
+      }
+    });
+    peer.on('connection',c=>{ if(conn) try{conn.close()}catch(e){}; conn=c; setupReceiver(c); });
+    peer.on('error',e=>fail('Connection service error: '+(e.type||'unknown')));
+  }
+
+  function setupReceiver(c){
+    setStatus('pcStatus','iPhone connected ✓',true);
+    let current=null;
+    c.on('open',()=>{});
+    c.on('data',msg=>{
+      if(!msg||!msg.type)return;
+      if(msg.type==='meta'){current={name:msg.name,size:msg.size,mime:msg.mime,chunks:[],received:0}; c.send({type:'ready',name:msg.name});}
+      else if(msg.type==='chunk'&&current){current.chunks.push(msg.data);current.received+=msg.data.byteLength||msg.data.size||0;}
+      else if(msg.type==='end'&&current){
+        const blob=new Blob(current.chunks,{type:current.mime||'image/jpeg'}); const item={name:safeName(current.name),blob,url:URL.createObjectURL(blob)}; received.push(item); renderReceived(); c.send({type:'done',name:item.name}); current=null;
+      }
+    });
+    c.on('close',()=>setStatus('pcStatus','Waiting for iPhone…',true));
+    c.on('error',()=>setStatus('pcStatus','Transfer connection error',false));
+  }
+
+  async function sendFile(file){
+    return new Promise((resolve,reject)=>{
+      const wait=()=>{ if(conn&&conn.open){go()} else setTimeout(wait,100); }; wait();
+      function go(){
+        conn.send({type:'meta',name:file.name,size:file.size,mime:file.type});
+        let offset=0;
+        const readNext=()=>{
+          if(offset>=file.size){conn.send({type:'end'});resolve();return;}
+          const slice=file.slice(offset,Math.min(offset+CHUNK,file.size)); const fr=new FileReader();
+          fr.onload=()=>{conn.send({type:'chunk',data:fr.result});offset+=fr.result.byteLength;const pct=Math.round(offset/file.size*100);document.getElementById('sendBar').style.width=pct+'%';document.getElementById('sendText').textContent='Sending '+file.name+' — '+pct+'%';setTimeout(readNext,0)};
+          fr.onerror=()=>reject(fr.error);fr.readAsArrayBuffer(slice);
+        };readNext();
+      }
+    });
+  }
+
+  function startPhone(){
+    peer=new Peer(undefined,{host:'0.peerjs.com',port:443,path:'/',secure:true,debug:0});
+    peer.on('open',()=>{conn=peer.connect(target,{reliable:true,serialization:'binary'});conn.on('open',()=>{setStatus('phoneStatus','Connected to PC ✓',true);document.getElementById('send').disabled=selected.length===0;});conn.on('data',msg=>{});conn.on('close',()=>{setStatus('phoneStatus','PC disconnected',false);document.getElementById('send').disabled=true});conn.on('error',()=>fail('The connection to the PC failed. Please rescan the QR code.'));});
+    peer.on('error',e=>fail('Could not connect to the PC: '+(e.type||'unknown')));
+  }
+
+  document.getElementById('picker').addEventListener('change',e=>{selected=[...e.target.files].filter(f=>f.type.startsWith('image/'));renderSelected();document.getElementById('send').disabled=selected.length===0||!conn||!conn.open});
+
+  // iPhone WhatsApp helper: Safari can read image data from the clipboard after an explicit user gesture.
+  document.getElementById('pastePhoto').addEventListener('click',async()=>{
+    const st=document.getElementById('pasteStatus');
+    try{
+      if(!navigator.clipboard || !navigator.clipboard.read) throw new Error('clipboard-unavailable');
+      st.textContent='Checking the clipboard…';
+      const items=await navigator.clipboard.read();
+      let found=[];
+      for(const item of items){
+        const type=item.types.find(t=>t.startsWith('image/'));
+        if(type){
+          const blob=await item.getType(type);
+          found.push(new File([blob], 'WhatsApp-photo-'+Date.now()+'.'+(type==='image/png'?'png':'jpg'), {type}));
+        }
+      }
+      if(!found.length){st.textContent='No image was found. In WhatsApp, try Copy on the photo, then tap Paste photo again.';return}
+      selected=[...selected,...found];
+      renderSelected();
+      document.getElementById('send').disabled=selected.length===0||!conn||!conn.open;
+      st.textContent=found.length+' photo'+(found.length===1?'':'s')+' pasted ✓';
+    }catch(e){
+      st.textContent='Safari could not read an image from the clipboard. Try Copy in WhatsApp first, then tap Paste photo. If WhatsApp does not copy the image, use Select photos instead.';
+    }
+  });
+  document.getElementById('send').addEventListener('click',async()=>{
+    if(!selected.length||!conn||!conn.open)return; const btn=document.getElementById('send');btn.disabled=true;document.getElementById('sendProgress').classList.remove('hidden');
+    try{for(let i=0;i<selected.length;i++){document.getElementById('sendText').textContent='Preparing '+selected[i].name+' ('+(i+1)+'/'+selected.length+')';document.getElementById('sendBar').style.width='0%';await sendFile(selected[i])}document.getElementById('sendText').textContent='All photos sent ✓';}
+    catch(e){fail('A photo could not be sent. Please try again.')}finally{btn.disabled=selected.length===0||!conn||!conn.open}
+  });
+
+  function renderSelected(){const box=document.getElementById('selected');box.innerHTML='';selected.forEach(f=>{const d=document.createElement('div');d.className='file';const img=document.createElement('img');img.src=URL.createObjectURL(f);const n=document.createElement('div');n.textContent=f.name;d.append(img,n);box.appendChild(d)})}
+  function renderReceived(){const box=document.getElementById('received');box.innerHTML='';received.forEach((x,i)=>{const row=document.createElement('div');row.className='received';const img=document.createElement('img');img.src=x.url;const name=document.createElement('div');name.className='name';name.textContent=x.name;const dl=document.createElement('button');dl.className='btn secondary';dl.textContent='Download';dl.onclick=()=>download(x);row.append(img,name,dl);box.appendChild(row)});document.getElementById('count').textContent=received.length;document.getElementById('downloadAll').disabled=received.length===0;document.getElementById('clear').disabled=received.length===0}
+  function download(x){const a=document.createElement('a');a.href=x.url;a.download=x.name;document.body.appendChild(a);a.click();a.remove()}
+  document.getElementById('downloadAll').onclick=()=>received.forEach((x,i)=>setTimeout(()=>download(x),i*250));
+  document.getElementById('clear').onclick=()=>{received.forEach(x=>URL.revokeObjectURL(x.url));received=[];renderReceived()};
+  function safeName(n){return (n||'photo.jpg').replace(/[\\/:*?"<>|]/g,'_')}
+})();
+</script>
+</body>
+</html>
